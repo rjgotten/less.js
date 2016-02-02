@@ -2,7 +2,7 @@
 
 var path = require('path'),
     fs = require('../lib/less-node/fs'),
-    os = require('os'),
+    os = require("os"),
     errno,
     mkdirp;
 
@@ -153,7 +153,10 @@ function printUsage() {
                 break;
             case 'include-path':
                 if (checkArgFunc(arg, match[2])) {
-                    options.paths = match[2].split(os.type().match(/Windows/) ? ';' : ':')
+                    // ; supported on windows.
+                    // : supported on windows and linux, excluding a drive letter like C:\ so C:\file:D:\file parses to 2
+                    options.paths = match[2]
+                        .split(os.type().match(/Windows/) ? /:(?!\\)|;/ : ':')
                         .map(function(p) {
                             if (p) {
                                 return path.resolve(process.cwd(), p);
@@ -270,25 +273,12 @@ function printUsage() {
         return;
     }
 
-    // If input filenames are surrounded in quotes here, strip the quotes.
-    // Bug #2508
-    var filenames = [args[1], args[2]].map(function (arg) {
-        var match;
-
-        match = arg && arg.match(/^'(.+)'$/);
-        if (match) {
-            return match[1];
-        } else {
-            return arg;
-        }
-    });
-
-    var input = filenames[0];
+    var input = args[1];
     if (input && input != '-') {
         input = path.resolve(process.cwd(), input);
     }
-    var output = filenames[1];
-    var outputbase = filenames[1];
+    var output = args[2];
+    var outputbase = args[2];
     if (output) {
         output = path.resolve(process.cwd(), output);
     }
@@ -363,6 +353,7 @@ function printUsage() {
 
     if (!sourceMapFileInline) {
         var writeSourceMap = function(output, onDone) {
+            output = output || "";
             var filename = sourceMapOptions.sourceMapFullFilename;
             ensureDirectory(filename);
             fs.writeFile(filename, output, 'utf8', function (err) {
